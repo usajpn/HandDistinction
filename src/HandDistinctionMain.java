@@ -4,7 +4,7 @@ public class HandDistinctionMain {
 	public static void main(String args[]) {
 		new HandDistinctionMain();
 		
-		String fileName = "./csv/left2_x.csv";
+		String fileName = "./csv/right3_x.csv";
 		CSVHandler csvHandler = new CSVHandler(fileName);
 		WindowFrames depthWindowFrames = csvHandler.csvToWindowFrames();
 		

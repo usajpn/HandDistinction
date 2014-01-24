@@ -47,6 +47,7 @@ public class HandDistinction {
 		// first row
 		int[] firstFrame = this.depthWindowFrames.get(0);
 		boolean hitBefore = false;
+		boolean addToListFlag = false;
 		int data;
 		
 		for (int x=0; x<firstFrame.length; x++) {
@@ -55,9 +56,7 @@ public class HandDistinction {
 				// append to group
 				if (hitBefore) {
 					group.append(x, 0, data);
-					if (x == (firstFrame.length - 1) && group.size() != 0) {
-						groupList.add(group);
-					}
+
 				} 
 				// create new group and append to group
 				else {
@@ -69,7 +68,9 @@ public class HandDistinction {
 			} else {
 				hitBefore = false;
 			}
-			
+			if (x == (firstFrame.length - 1) && group.size() != 0) {
+				groupList.add(group);
+			}	
 		}
 		
 		// after first row
@@ -82,26 +83,38 @@ public class HandDistinction {
 				if (data != 0) {
 					if (hitBefore) {
 						group.append(x, y, data);
-						if (!group.hitTopState()) {
-							//check top pixel
-							tmpGroup = groupList.searchBlob(x, y-1);
-							if (tmpGroup != null) {
-								group.putAll(tmpGroup);
-								group.setHitTop();
-								groupList.deleteBlob(x, y-1);
-							}
+						
+						//check top pixel
+						tmpGroup = groupList.searchBlob(x, y-1);
+						if (tmpGroup != null) {
+							group.putAll(tmpGroup);
+							groupList.deleteBlob(x, y-1);
 						}
-					}
-					if (x == (firstFrame.length - 1) && group.size() != 0) {
+					} else {
 						groupList.add(group);
-					}	
+						group = new Blob();
+						group.append(x, y, data);
+						
+						//check top pixel
+						tmpGroup = groupList.searchBlob(x, y-1);
+						if (tmpGroup != null) {
+							group.putAll(tmpGroup);
+							groupList.deleteBlob(x, y-1);
+						}	
+					}
+		
 					hitBefore = true;
 				} else {
 					hitBefore = false;
 				}
+				
+			
 			}
 			hitBefore = false;
 		}
+		if (group.size() != 0) {
+			groupList.add(group);
+		}			
 		
 		return groupList;
 	}
@@ -176,6 +189,17 @@ public class HandDistinction {
 		return v2;
 	}
 	
+	public int calculateLength(Vector v1, Vector v2) {
+		int result = 0;
+		int x1 = v1.getX();
+		int x2 = v2.getX();
+		int y1 = v1.getY();
+		int y2 = v2.getY();
+		
+		result = (int) Math.floor(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2)));
+		return result;
+	}
+	
 	public int calculateAngle(Vector v1, Vector v2) {
 		int deg;
 		double s;
@@ -222,7 +246,9 @@ public class HandDistinction {
 		}
 		
 		// calculate vectors for each group
-		int ang1 = 0, ang2 = 0;
+		
+		int ang1 = 0, ang2 = 0, len1 = 0, len2 = 0;
+		int saveAng = 0, saveLen = 0;
 		
 		for (int i=0; i<this.groupVectorList.size(); i++) {
 			System.out.println("==group" + i + "===");
@@ -237,10 +263,13 @@ public class HandDistinction {
 			ang2 = this.calculateAngle(rightTop, leftBottom);
 			System.out.println("ang1:" + ang1);
 			System.out.println("ang2:" + ang2);
-		
+			
+			len1 = this.calculateLength(leftTop, rightBottom);
+			len2 = this.calculateLength(rightTop, leftBottom);
+			System.out.println("len1:" + len1);
+			System.out.println("len2:" + len2);		
 		}	
 		
-		// svm according to vectors
 		if (ang1 < 90) {
 			result = 1;
 		} else {
