@@ -248,7 +248,7 @@ public class HandDistinction {
 		// calculate vectors for each group
 		
 		int ang1 = 0, ang2 = 0, len1 = 0, len2 = 0;
-		int saveAng = 0, saveLen = 0;
+		double avgAng = 0, saveLen = 0;
 		
 		for (int i=0; i<this.groupVectorList.size(); i++) {
 			System.out.println("==group" + i + "===");
@@ -263,18 +263,47 @@ public class HandDistinction {
 			ang2 = this.calculateAngle(rightTop, leftBottom);
 			System.out.println("ang1:" + ang1);
 			System.out.println("ang2:" + ang2);
+
 			
 			len1 = this.calculateLength(leftTop, rightBottom);
 			len2 = this.calculateLength(rightTop, leftBottom);
 			System.out.println("len1:" + len1);
 			System.out.println("len2:" + len2);		
+
+			
+			avgAng = ((ang1 + ang2) / 2.0);
+			
+				
+			if (ang1 == 0 || ang1 == 180 || ang2 == 0 || ang2 == 180) {
+				result = 0;
+			}
+			//right
+			else if (0 < avgAng && avgAng <= 10) {
+				if (result == -1 && (len1 < saveLen || len2 < saveLen)) {
+					// do nothing
+				} else {
+					if (len1 < len2) {
+						saveLen = len2;
+					} else {
+						saveLen = len1;
+					}
+					result = 1;
+				}
+			} 
+			//left
+			else if (170 <= avgAng && avgAng < 180) {
+				if (result == 1 && (len1 < saveLen || len2 < saveLen)) {
+					// do nothing
+				} else {
+					if (len1 < len2) {
+						saveLen = len2;
+					} else {
+						saveLen = len1;
+					}
+					result = -1;
+				}	
+			}	
 		}	
-		
-		if (ang1 < 90) {
-			result = 1;
-		} else {
-			result = -1;
-		}
 		return result;
 	}
 }
