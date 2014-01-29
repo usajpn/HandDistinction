@@ -1,17 +1,24 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 
 public class HandDistinction {
 	private WindowFrames depthWindowFrames;
 	private int[] firstDepthFrame;
-	private static final int threshold = 1000;
+	private static final int thresholdMAX = 800;
+	private static final int thresholdMIN = 400;
 	private BlobList groupList;
 	private ArrayList<ArrayList<Vector>> groupVectorList = new ArrayList<ArrayList<Vector>>();
+	private boolean overTwoThirds;
 	
 	public HandDistinction(WindowFrames windowFrames, int[] firstFrame) {
 		this.depthWindowFrames = windowFrames;
 		this.firstDepthFrame = firstFrame;
+	}
+	
+	public boolean getTwoThirds() {
+		return this.overTwoThirds;
 	}
 	
 	public void thresholdize() {
@@ -20,7 +27,7 @@ public class HandDistinction {
 			for (int x=0; x<this.depthWindowFrames.getWidth(y); x++) {
 				depthData = this.depthWindowFrames.getData(x, y);
 				
-				if (threshold < depthData) {
+				if (depthData < thresholdMIN || thresholdMAX < depthData) {
 					int[] intAry = this.depthWindowFrames.get(y);
 					intAry[x] = 0;
 					this.depthWindowFrames.set(y, intAry);	
@@ -30,10 +37,16 @@ public class HandDistinction {
 	}
 	
 	public void convertRealDepthData() {
+		int[] saveFrame = new int[this.depthWindowFrames.get(0).length];
 		for (int y=0; y<this.depthWindowFrames.getHeight(); y++) {
 			int[] replaceFrame = new int[this.depthWindowFrames.get(y).length];
 			for (int x=0; x<this.depthWindowFrames.getWidth(y); x++) {
-				replaceFrame[x] = this.firstDepthFrame[x] + this.depthWindowFrames.getData(x, y); 
+				if (y==0) {
+					replaceFrame[x] = this.firstDepthFrame[x] + this.depthWindowFrames.getData(x, y); 
+				} else {
+					replaceFrame[x] = saveFrame[x] + this.depthWindowFrames.getData(x, y);
+				}
+				saveFrame[x] = replaceFrame[x];
 			}
 			this.depthWindowFrames.set(y, replaceFrame);
 		}
@@ -142,8 +155,45 @@ public class HandDistinction {
 				vectorList.add(vector);
 			}
 			
+			
+			
 			// sort vector list by y (time)
 			Collections.sort(vectorList, new TemporalComparator());
+			
+			// sort vector by x difference
+			int maxDiff = 0;
+			int diff = 0;
+			int yPrevious = 0;
+			int yNow = vectorList.get(0).getY();
+			ArrayList<Vector> yList = new ArrayList<Vector>();
+			for (int m=0; m<vectorList.size(); m++) {
+				// y not change
+				if (vectorList.get(m).getY() == yNow) {
+					yList.add(vectorList.get(m));
+				}
+				// ychange
+				else {
+					Collections.sort(yList, new XComparator());
+					diff = yList.get(yList.size()-1).getX() - yList.get(0).getX();
+					if (maxDiff < diff) maxDiff = diff;
+					
+					yList = new ArrayList<Vector>();
+					yList.add(vectorList.get(m));
+					yNow = vectorList.get(m).getY();
+				}
+				// last
+				if (m == vectorList.size() - 1) {
+					Collections.sort(yList, new XComparator());
+					diff = yList.get(yList.size()-1).getX() - yList.get(0).getX();
+					if (maxDiff < diff) maxDiff = diff;		
+				}
+			}
+			System.out.println(maxDiff);
+			
+			if (maxDiff > depthWindowFrames.getWidth(0) / 3.0 * 2) {
+				this.overTwoThirds = true;
+			}
+			
 			int minTime = vectorList.get(0).getY();
 			int maxTime = vectorList.get(vectorList.size()-1).getY();
 			
@@ -229,6 +279,15 @@ public class HandDistinction {
 		int result = 0;
 		this.convertRealDepthData();
 		this.thresholdize();
+		/*
+		for (int y=0; y<this.depthWindowFrames.getHeight(); y++) {
+			for (int x=0; x<this.depthWindowFrames.getWidth(y); x++) {
+				System.out.print(this.depthWindowFrames.getData(x, y) + " ");
+			}
+			System.out.println("");
+		}
+		*/
+		
 		
 		// make groups
 		this.groupify();
@@ -304,6 +363,7 @@ public class HandDistinction {
 				}	
 			}	
 		}	
+		
 		return result;
 	}
 }
